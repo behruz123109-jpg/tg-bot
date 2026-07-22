@@ -5,24 +5,53 @@ DB_NAME = "game_database.db"
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
+    
+    # Foydalanuvchilar bazasi
     c.execute('''CREATE TABLE IF NOT EXISTS users (
                     user_id INTEGER PRIMARY KEY,
                     username TEXT,
                     coins INTEGER DEFAULT 0,
-                    uc_chips INTEGER DEFAULT 0,
-                    joined_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+                    uc_chips INTEGER DEFAULT 0)''')
                     
-    c.execute('''CREATE TABLE IF NOT EXISTS channels (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    channel_username TEXT UNIQUE,
-                    title TEXT)''')
+    # Dinamik Sozlamalar bazasi (Admin o'zgartiradigan barcha parametrlar)
+    c.execute('''CREATE TABLE IF NOT EXISTS settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT)''')
                     
-    c.execute('''CREATE TABLE IF NOT EXISTS withdrawals (
+    # Vazifalar bazasi
+    c.execute('''CREATE TABLE IF NOT EXISTS tasks (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    chips INTEGER,
-                    pubg_id TEXT,
-                    status TEXT DEFAULT 'Kutilmoqda')''')
+                    title TEXT,
+                    reward_amount INTEGER,
+                    reward_type TEXT,
+                    url TEXT)''')
+
+    # Boshlang'ich sozlamalarni kiritish (Agar yo'q bo'lsa)
+    defaults = {
+        "admin_card": "8600 0000 0000 0000",
+        "card_owner": "ADMIN ISMI",
+        "olmos_price": "100",  # 1 Olmos = 100 so'm
+        "swap_rate": "100000", # 100k Tanga = 50 Olmos
+        "swap_reward": "50"
+    }
+    for key, val in defaults.items():
+        c.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', (key, val))
+
+    conn.commit()
+    conn.close()
+
+def get_setting(key):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute('SELECT value FROM settings WHERE key = ?', (key,))
+    row = c.fetchone()
+    conn.close()
+    return row[0] if row else ""
+
+def set_setting(key, value):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute('UPDATE settings SET value = ? WHERE key = ?', (value, key))
     conn.commit()
     conn.close()
 
@@ -33,76 +62,18 @@ def add_user(user_id, username):
     conn.commit()
     conn.close()
 
-def get_stats():
+def add_task(title, reward_amount, reward_type, url):
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    c.execute('SELECT COUNT(*) FROM users')
-    total_users = c.fetchone()[0]
-    c.execute('SELECT COUNT(*) FROM withdrawals WHERE status = "Kutilmoqda"')
-    pending_w = c.fetchone()[0]
+    c.execute('INSERT INTO tasks (title, reward_amount, reward_type, url) VALUES (?, ?, ?, ?)', 
+              (title, reward_amount, reward_type, url))
+    conn.commit()
     conn.close()
-    return total_users, pending_w
 
-def get_all_users():
+def get_all_tasks():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    c.execute('SELECT user_id FROM users')
-    users = [row[0] for row in c.fetchall()]
-    conn.close()
-    return users
-
-def add_channel(username, title):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    try:
-        c.execute('INSERT INTO channels (channel_username, title) VALUES (?, ?)', (username, title))
-        conn.commit()
-        return True
-    except sqlite3.IntegrityError:
-        return False
-    finally:
-        conn.close()
-
-def get_channels():
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('SELECT id, channel_username, title FROM channels')
+    c.execute('SELECT id, title, reward_amount, reward_type, url FROM tasks')
     rows = c.fetchall()
     conn.close()
     return rows
-
-def delete_channel(channel_id):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('DELETE FROM channels WHERE id = ?', (channel_id,))
-    conn.commit()
-    conn.close()
-
-def add_withdrawal(user_id, chips, pubg_id):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('INSERT INTO withdrawals (user_id, chips, pubg_id) VALUES (?, ?, ?)', (user_id, chips, pubg_id))
-    conn.commit()
-    conn.close()
-
-def get_pending_withdrawals():
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('SELECT id, user_id, chips, pubg_id FROM withdrawals WHERE status = "Kutilmoqda"')
-    rows = c.fetchall()
-    conn.close()
-    return rows
-
-def update_withdrawal_status(wid, status):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('UPDATE withdrawals SET status = ? WHERE id = ?', (status, wid))
-    conn.commit()
-    conn.close()
-
-def add_chips(user_id, amount):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('UPDATE users SET uc_chips = uc_chips + ? WHERE user_id = ?', (amount, user_id))
-    conn.commit()
-    conn.close()
