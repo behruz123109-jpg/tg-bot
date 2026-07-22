@@ -6,19 +6,22 @@ from aiogram.enums import ParseMode
 
 from database import init_db, add_user, get_setting
 from keyboards import get_main_menu
+from handlers.admin import router as admin_router  # Admin routerni import qilamiz
 
-BOT_TOKEN = "8300434192:AAHQ-RvE9I0SsD_i61LEG5a1lZTScGhc8oM"
-# O'zingizning Telegram ID'ingizni shu yerga yozasiz (Admin bo'lish uchun)
-ADMIN_IDS = [8488028783] 
+BOT_TOKEN = "SIZNING_BOT_TOKENINGIZ_SHU_YERGA"
+ADMIN_IDS = [123456789] # O'zingizning Telegram ID'ingizni yozing
 
 bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher()
+
+# Admin routerni Dispatcherga ulaymiz
+dp.include_router(admin_router)
 
 @dp.message(CommandStart())
 async def command_start_handler(message: types.Message, command: CommandObject):
     user = message.from_user
     
-    # Texnik tanaffus (Maintenance) tekshiruvi
+    # Texnik tanaffus tekshiruvi
     maintenance_mode = await get_setting('maintenance_mode')
     if maintenance_mode == '1' and user.id not in ADMIN_IDS:
         await message.answer("🛠 <b>TapMasterBot profilaktika rejimida!</b>\nTez orada qaytamiz.")
@@ -40,11 +43,8 @@ async def command_start_handler(message: types.Message, command: CommandObject):
     )
 
     start_text = await get_setting('start_text')
-    
-    # Foydalanuvchi adminmi yoki yo'qligini tekshiramiz
     is_admin = user.id in ADMIN_IDS
     
-    # Matn va klaviaturani birga yuboramiz
     await message.answer(
         f"Salom, <b>{user.full_name}</b>! 🎮 <b>TapMasterBot</b>'ga xush kelibsiz.\n\n{start_text}",
         reply_markup=get_main_menu(is_admin)
