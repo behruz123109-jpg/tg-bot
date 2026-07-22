@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>UC Miner Pro</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div class="header">
+        <h3 style="margin: 0;">👑 UC Miner Pro</h3>
+        <div class="balances">
+            <div class="balance-box">
+                <div class="label">🟡 Tangalar</div>
+                <div class="coin-count" id="coinBalance">0</div>
+            </div>
+            <div class="balance-box">
+                <div class="label">💎 UC-Chip</div>
+                <div class="uc-count" id="chipBalance">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tap-area" id="tapArea">
+        <div class="main-coin" id="coin">🎮</div>
+    </div>
+
+    <div class="energy-container">
+        <div class="energy-text">⚡ Energiya: <span id="energyText">1000</span> / 1000</div>
+        <div class="energy-bar-bg">
+            <div class="energy-bar-fill" id="energyFill"></div>
+        </div>
+    </div>
+
+    <div class="menu">
+        <button class="menu-btn" onclick="openWallet()">💳 Hamyon</button>
+        <button class="menu-btn" style="color: #ffcc00;" onclick="showTasks()">📋 Vazifalar</button>
+    </div>
+
+    <!-- Hamyon Modali -->
+    <div class="wallet-modal" id="walletModal" onclick="closeWallet(event)">
+        <div class="wallet-content" id="walletContent">
+            <h2 style="margin-top:0;">💳 Mening Hamyonim</h2>
+            <p class="modal-balance">Mavjud: <span id="modalChips">0</span> 💎 Olmos</p>
+            
+            <button class="action-btn btn-buy" onclick="buyDiamonds()">⭐️ 5,000 Olmos (100 Stars)</button>
+            <button class="action-btn btn-swap" onclick="swapCoins()">🔄 100,000 Tanga -> 50 💎</button>
+            <button class="action-btn btn-withdraw" onclick="withdraw()">🎁 PUBG UC Yechib olish</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
