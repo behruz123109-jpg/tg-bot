@@ -1,79 +1,107 @@
-import sqlite3
+import aiosqlite
+import logging
 
-DB_NAME = "game_database.db"
+# Ma'lumotlar bazasi fayli nomi (LibSQL/SQLite formatida)
+DB_NAME = "bot_database.db"
 
-def init_db():
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    
-    # Foydalanuvchilar bazasi
-    c.execute('''CREATE TABLE IF NOT EXISTS users (
-                    user_id INTEGER PRIMARY KEY,
-                    username TEXT,
-                    coins INTEGER DEFAULT 0,
-                    uc_chips INTEGER DEFAULT 0)''')
-                    
-    # Dinamik Sozlamalar bazasi (Admin o'zgartiradigan barcha parametrlar)
-    c.execute('''CREATE TABLE IF NOT EXISTS settings (
-                    key TEXT PRIMARY KEY,
-                    value TEXT)''')
-                    
-    # Vazifalar bazasi
-    c.execute('''CREATE TABLE IF NOT EXISTS tasks (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    title TEXT,
-                    reward_amount INTEGER,
-                    reward_type TEXT,
-                    url TEXT)''')
+async def init_db():
+    """Barcha jadvallarni va boshlang'ich sozlamalarni yaratish"""
+    async with aiosqlite.connect(DB_NAME) as db:
+        
+        # 1. FOYDALANUVCHILAR (Users)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                telegram_id INTEGER PRIMARY KEY,
+                username TEXT,
+                full_name TEXT,
+                coins INTEGER DEFAULT 0,
+                diamonds INTEGER DEFAULT 0,
+                energy INTEGER DEFAULT 1000,
+                max_energy INTEGER DEFAULT 1000,
+                level INTEGER DEFAULT 1,
+                referrer_id INTEGER,
+                is_banned BOOLEAN DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
-    # Boshlang'ich sozlamalarni kiritish (Agar yo'q bo'lsa)
-    defaults = {
-        "admin_card": "8600 0000 0000 0000",
-        "card_owner": "ADMIN ISMI",
-        "olmos_price": "100",  # 1 Olmos = 100 so'm
-        "swap_rate": "100000", # 100k Tanga = 50 Olmos
-        "swap_reward": "50"
-    }
-    for key, val in defaults.items():
-        c.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', (key, val))
+        # 2. DINAMIK SOZLAMALAR (Admin panel uchun)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS settings (
+                setting_key TEXT PRIMARY KEY,
+                setting_value TEXT
+            )
+        """)
+        
+        # Boshlang'ich sozlamalarni kiritib qo'yamiz (agar yo'q bo'lsa)
+        default_settings = [
+            ('help_text', 'Bot qoidalari va yordam matni. Admin buni o\'zgartirishi mumkin.'),
+            ('start_text', 'Asosiy menyuga xush kelibsiz!'),
+            ('maintenance_mode', '0'), # 1 qilsangiz bot texnik tanaffusga tushadi
+            ('min_payout', '100'), # Yechish uchun minimal olmos
+            ('diamond_to_uc_rate', '60') # 100 Olmos = 60 UC
+        ]
+        await db.executemany(
+            "INSERT OR IGNORE INTO settings (setting_key, setting_value) VALUES (?, ?)",
+            default_settings
+        )
 
-    conn.commit()
-    conn.close()
+        # 3. TO'LOVLAR VA KASSA (Payouts)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS payouts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                diamonds_spent INTEGER NOT NULL,
+                amount_type TEXT, -- 'UC', 'SUM', 'CARD'
+                details TEXT,     -- PUBGM ID yoki Karta raqami
+                status TEXT DEFAULT 'pending', -- pending, approved, rejected
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(telegram_id)
+            )
+        """)
 
-def get_setting(key):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('SELECT value FROM settings WHERE key = ?', (key,))
-    row = c.fetchone()
-    conn.close()
-    return row[0] if row else ""
+        # 4. VAZIFALAR VA HOMIYLAR (Tasks)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT,
+                task_type TEXT, -- channel, story, quiz
+                reward_diamonds INTEGER DEFAULT 0,
+                reward_coins INTEGER DEFAULT 0,
+                url TEXT,
+                is_active BOOLEAN DEFAULT 1
+            )
+        """)
 
-def set_setting(key, value):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('UPDATE settings SET value = ? WHERE key = ?', (value, key))
-    conn.commit()
-    conn.close()
+        # 5. BAJARILGAN VAZIFALAR (User Tasks)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS user_tasks (
+                user_id INTEGER,
+                task_id INTEGER,
+                completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, task_id),
+                FOREIGN KEY(user_id) REFERENCES users(telegram_id),
+                FOREIGN KEY(task_id) REFERENCES tasks(id)
+            )
+        """)
 
-def add_user(user_id, username):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('INSERT OR IGNORE INTO users (user_id, username) VALUES (?, ?)', (user_id, username))
-    conn.commit()
-    conn.close()
+        await db.commit()
+        logging.info("✅ Ma'lumotlar bazasi muvaffaqiyatli ishga tushdi va jadvallar yangilandi!")
 
-def add_task(title, reward_amount, reward_type, url):
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('INSERT INTO tasks (title, reward_amount, reward_type, url) VALUES (?, ?, ?, ?)', 
-              (title, reward_amount, reward_type, url))
-    conn.commit()
-    conn.close()
+# --- Bazaga ulanish uchun yordamchi funksiyalar (API) ---
 
-def get_all_tasks():
-    conn = sqlite3.connect(DB_NAME)
-    c = conn.cursor()
-    c.execute('SELECT id, title, reward_amount, reward_type, url FROM tasks')
-    rows = c.fetchall()
-    conn.close()
-    return rows
+async def add_user(telegram_id, username, full_name, referrer_id=None):
+    """Yangi foydalanuvchini ro'yxatdan o'tkazish"""
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("""
+            INSERT OR IGNORE INTO users (telegram_id, username, full_name, referrer_id)
+            VALUES (?, ?, ?, ?)
+        """, (telegram_id, username, full_name, referrer_id))
+        await db.commit()
+
+async def get_setting(key):
+    """Admin sozlamalarini o'qish (Bot to'xtamasligi uchun)"""
+    async with aiosqlite.connect(DB_NAME) as db:
+        async with db.execute("SELECT setting_value FROM settings WHERE setting_key = ?", (key,)) as cursor:
+            row = await cursor.fetchone()
+            return row[0] if row else None
