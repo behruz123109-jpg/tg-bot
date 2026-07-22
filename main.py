@@ -4,13 +4,13 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart, CommandObject
 from aiogram.enums import ParseMode
 
-# database.py dan funksiyalarni chaqirib olamiz
 from database import init_db, add_user, get_setting
+from keyboards import get_main_menu
 
-# O'zingizning bot tokeningizni shu yerga qo'yasiz (BotFather'dan olingan)
 BOT_TOKEN = "8300434192:AAHQ-RvE9I0SsD_i61LEG5a1lZTScGhc8oM"
+# O'zingizning Telegram ID'ingizni shu yerga yozasiz (Admin bo'lish uchun)
+ADMIN_IDS = [8488028783] 
 
-# Bot va Dispatcher yaratish
 bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher()
 
@@ -18,25 +18,20 @@ dp = Dispatcher()
 async def command_start_handler(message: types.Message, command: CommandObject):
     user = message.from_user
     
-    # 1. Texnik tanaffus (Maintenance) holatini tekshiramiz
+    # Texnik tanaffus (Maintenance) tekshiruvi
     maintenance_mode = await get_setting('maintenance_mode')
-    
-    # Agar admin panelda tanaffus 1 qilingan bo'lsa, bot oddiy foydalanuvchilarga ishlamaydi
-    # (Lekin sizni, ya'ni adminni tekshirib o'tkazib yuboradigan filtrni admin qismida qo'shamiz)
-    if maintenance_mode == '1':
-        await message.answer("🛠 <b>Botda profilaktika ishlari ketmoqda!</b>\nYangilanishlar yuklanmoqda. Tez orada qaytamiz, biroz kuting.")
+    if maintenance_mode == '1' and user.id not in ADMIN_IDS:
+        await message.answer("🛠 <b>TapMasterBot profilaktika rejimida!</b>\nTez orada qaytamiz.")
         return
 
-    # 2. Referal tizimi (Deep link orqali kim chaqirganini aniqlash)
-    # Masalan: t.me/Botingiz_bot?start=123456789
+    # Referal ID ni aniqlash
     referrer_id = None
     if command.args and command.args.isdigit():
         referrer_id = int(command.args)
         if referrer_id == user.id:
-            referrer_id = None # O'ziga o'zi referal bo'la olmaydi (Anti-cheat)
+            referrer_id = None
 
-    # 3. Foydalanuvchini bazaga qo'shish
-    # (database.py dagi INSERT OR IGNORE sababli, agar oldin kirgan bo'lsa xato bermaydi)
+    # Bazaga qo'shish
     await add_user(
         telegram_id=user.id,
         username=user.username,
@@ -44,25 +39,23 @@ async def command_start_handler(message: types.Message, command: CommandObject):
         referrer_id=referrer_id
     )
 
-    # 4. Bazadan start matnini o'qib olish (Admin Panelda o'zgartiriladigan matn)
     start_text = await get_setting('start_text')
     
-    # Hoziroq vaqtincha oddiy xabar yuboramiz. 
-    # Keyingi qadamda bunga chiroyli WebApp tugmasini qo'shamiz!
-    await message.answer(f"Salom, <b>{user.full_name}</b>!\n\n{start_text}")
+    # Foydalanuvchi adminmi yoki yo'qligini tekshiramiz
+    is_admin = user.id in ADMIN_IDS
+    
+    # Matn va klaviaturani birga yuboramiz
+    await message.answer(
+        f"Salom, <b>{user.full_name}</b>! 🎮 <b>TapMasterBot</b>'ga xush kelibsiz.\n\n{start_text}",
+        reply_markup=get_main_menu(is_admin)
+    )
 
 async def main():
-    # Bot eshitishni boshlashidan oldin bazani yuklaymiz (Jadvallar yaratiladi)
     await init_db()
-    logging.info("✅ Bot muvaffaqiyatli ishga tushdi!")
-    
-    # Bot yopiq paytida kelgan eskirgan xabarlarni o'tkazib yuborish (flood'ni oldini oladi)
-    await bot.delete_webhook(drop_pending_updates=True) 
-    
-    # Botni polling rejimida ishga tushirish
+    logging.info("✅ TapMasterBot muvaffaqiyatli ishga tushdi!")
+    await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    # Loglarni ekranga chiqarish uchun
     logging.basicConfig(level=logging.INFO)
     asyncio.run(main())
