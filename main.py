@@ -1,91 +1,68 @@
 import asyncio
-import json
-from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import CommandStart, Command
-from aiogram.types import WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
-import database
+import logging
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import CommandStart, CommandObject
+from aiogram.enums import ParseMode
 
-BOT_TOKEN = "SIZNING_BOT_TOKENINGIZ"
-ADMIN_ID = 123456789 # Telegram ID raqamingiz
-WEBAPP_URL = "https://sizning-saytingiz.uz/index.html"
+# database.py dan funksiyalarni chaqirib olamiz
+from database import init_db, add_user, get_setting
 
-bot = Bot(token=BOT_TOKEN)
+# O'zingizning bot tokeningizni shu yerga qo'yasiz (BotFather'dan olingan)
+BOT_TOKEN = "8300434192:AAHQ-RvE9I0SsD_i61LEG5a1lZTScGhc8oM"
+
+# Bot va Dispatcher yaratish
+bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher()
 
-class AdminStates(StatesGroup):
-    waiting_for_card = State()
-    waiting_for_price = State()
-    waiting_for_task_title = State()
-
 @dp.message(CommandStart())
-async def start(message: types.Message):
-    database.add_user(message.from_user.id, message.from_user.username)
-    markup = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎮 O'yinga kirish", web_app=WebAppInfo(url=WEBAPP_URL))]
-    ])
-    await message.answer(f"Salom {message.from_user.first_name}! O'yinga xush kelibsiz.", reply_markup=markup)
-
-# ================= ADMIN PANEL =================
-@dp.message(Command("admin"))
-async def admin_panel(message: types.Message):
-    if message.from_user.id != ADMIN_ID: return
+async def command_start_handler(message: types.Message, command: CommandObject):
+    user = message.from_user
     
-    card = database.get_setting("admin_card")
-    price = database.get_setting("olmos_price")
+    # 1. Texnik tanaffus (Maintenance) holatini tekshiramiz
+    maintenance_mode = await get_setting('maintenance_mode')
     
-    markup = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=f"💳 Kartani o'zgartirish ({card})", callback_data="change_card")],
-        [InlineKeyboardButton(text=f"💵 Olmos narxi ({price} so'm)", callback_data="change_price")],
-        [InlineKeyboardButton(text="➕ Yangi vazifa qo'shish", callback_data="add_task")]
-    ])
-    await message.answer("👑 **Admin Boshqaruv Paneli:**\nNimani o'zgartirmoqchisiz?", reply_markup=markup, parse_mode="Markdown")
+    # Agar admin panelda tanaffus 1 qilingan bo'lsa, bot oddiy foydalanuvchilarga ishlamaydi
+    # (Lekin sizni, ya'ni adminni tekshirib o'tkazib yuboradigan filtrni admin qismida qo'shamiz)
+    if maintenance_mode == '1':
+        await message.answer("🛠 <b>Botda profilaktika ishlari ketmoqda!</b>\nYangilanishlar yuklanmoqda. Tez orada qaytamiz, biroz kuting.")
+        return
 
-@dp.callback_query(F.data == "change_card")
-async def edit_card_start(call: types.CallbackQuery, state: FSMContext):
-    await call.message.answer("Yangi Karta raqami va Egalari ismini yozing:\n*Masalan: 8600123456789012 (Behruz A.)*", parse_mode="Markdown")
-    await state.set_state(AdminStates.waiting_for_card)
+    # 2. Referal tizimi (Deep link orqali kim chaqirganini aniqlash)
+    # Masalan: t.me/Botingiz_bot?start=123456789
+    referrer_id = None
+    if command.args and command.args.isdigit():
+        referrer_id = int(command.args)
+        if referrer_id == user.id:
+            referrer_id = None # O'ziga o'zi referal bo'la olmaydi (Anti-cheat)
 
-@dp.message(AdminStates.waiting_for_card)
-async def edit_card_save(message: types.Message, state: FSMContext):
-    database.set_setting("admin_card", message.text)
-    await message.answer("✅ Karta raqami muvaffaqiyatli o'zgartirildi!")
-    await state.clear()
+    # 3. Foydalanuvchini bazaga qo'shish
+    # (database.py dagi INSERT OR IGNORE sababli, agar oldin kirgan bo'lsa xato bermaydi)
+    await add_user(
+        telegram_id=user.id,
+        username=user.username,
+        full_name=user.full_name,
+        referrer_id=referrer_id
+    )
 
-@dp.callback_query(F.data == "change_price")
-async def edit_price_start(call: types.CallbackQuery, state: FSMContext):
-    await call.message.answer("1 ta Olmosning narxini so'mda kiriting:\n*Masalan: 120*", parse_mode="Markdown")
-    await state.set_state(AdminStates.waiting_for_price)
-
-@dp.message(AdminStates.waiting_for_price)
-async def edit_price_save(message: types.Message, state: FSMContext):
-    database.set_setting("olmos_price", message.text)
-    await message.answer("✅ Olmos narxi o'zgartirildi!")
-    await state.clear()
-
-# WebApp dan kelgan so'rovlar (Sotib olish / Yechish)
-@dp.message(F.web_app_data)
-async def web_app_handler(message: types.Message):
-    data = json.loads(message.web_app_data.data)
+    # 4. Bazadan start matnini o'qib olish (Admin Panelda o'zgartiriladigan matn)
+    start_text = await get_setting('start_text')
     
-    if data['action'] == 'buy_real':
-        card = database.get_setting("admin_card")
-        price = data['price']
-        amount = data['amount']
-        
-        msg = (
-            f"💎 **{amount} Olmos** sotib olish so'rovi.\n\n"
-            f"💵 To'lov summasi: **{price} so'm**\n"
-            f"💳 Karta: `{card}`\n\n"
-            f"To'lovni bajaring va chek (skrinshot) yuboring!"
-        )
-        await message.answer(msg, parse_mode="Markdown")
+    # Hoziroq vaqtincha oddiy xabar yuboramiz. 
+    # Keyingi qadamda bunga chiroyli WebApp tugmasini qo'shamiz!
+    await message.answer(f"Salom, <b>{user.full_name}</b>!\n\n{start_text}")
 
 async def main():
-    database.init_db()
-    print("🤖 Bot va Admin Panel tayyor!")
+    # Bot eshitishni boshlashidan oldin bazani yuklaymiz (Jadvallar yaratiladi)
+    await init_db()
+    logging.info("✅ Bot muvaffaqiyatli ishga tushdi!")
+    
+    # Bot yopiq paytida kelgan eskirgan xabarlarni o'tkazib yuborish (flood'ni oldini oladi)
+    await bot.delete_webhook(drop_pending_updates=True) 
+    
+    # Botni polling rejimida ishga tushirish
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
+    # Loglarni ekranga chiqarish uchun
+    logging.basicConfig(level=logging.INFO)
     asyncio.run(main())
