@@ -3,66 +3,83 @@
   padding: 0;
   box-sizing: border-box;
 }
+* { box-sizing: border-box; }
 body {
-    margin: 0; padding: 0; background-color: #0f0f0f; color: white;
-    font-family: 'Segoe UI', Tahoma, sans-serif; text-align: center;
-    overflow: hidden; user-select: none;
+    margin: 0; padding: 0; background-color: #0d0e12; color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    overflow-x: hidden; user-select: none;
 }
+/* Header */
 .header {
-    padding: 15px; background: #1a1a1a;
-    border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;
+    background: rgba(26, 26, 26, 0.9); padding: 15px; text-align: center;
+    backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 10;
+    border-bottom: 1px solid #333;
 }
-.balances { display: flex; justify-content: space-around; margin-top: 10px; }
-.balance-box { background: #2a2a2a; padding: 10px 15px; border-radius: 12px; width: 40%; }
-.label { font-size: 12px; color: #aaa; margin-bottom: 5px; }
-.coin-count { font-size: 22px; font-weight: bold; color: #ffd700; }
-.uc-count { font-size: 22px; font-weight: bold; color: #00e5ff; }
+.header h2 { margin: 0 0 10px 0; font-size: 20px; }
+.balances { display: flex; justify-content: space-between; gap: 10px; }
+.balance-box { background: #222; padding: 12px; border-radius: 12px; flex: 1; border: 1px solid #444; }
+.balance-box span { font-size: 12px; color: #aaa; }
+.coin-count { font-size: 20px; font-weight: bold; color: #ffcc00; }
+.uc-count { font-size: 20px; font-weight: bold; color: #00e5ff; }
 
-.tap-area { margin-top: 40px; position: relative; height: 320px; }
+/* Tabs */
+.tab-content { display: none; padding: 20px; padding-bottom: 80px; animation: fadeIn 0.3s; }
+.tab-content.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Main Tap Area */
+.tap-area { height: 40vh; display: flex; align-items: center; justify-content: center; position: relative; }
 .main-coin {
-    width: 220px; height: 220px;
-    background: radial-gradient(circle, #ffcc00, #d4af37, #997a00);
-    border-radius: 50%; border: 5px solid #ffe680;
-    box-shadow: 0 10px 30px rgba(255, 204, 0, 0.3);
-    display: inline-flex; align-items: center; justify-content: center;
-    font-size: 90px; margin: 0 auto; transition: transform 0.05s ease; cursor: pointer;
+    width: 200px; height: 200px; border-radius: 50%;
+    background: radial-gradient(circle, #ffea00, #ffb300);
+    border: 6px solid #fff9c4; box-shadow: 0 0 40px rgba(255, 215, 0, 0.4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 80px; cursor: pointer; transition: transform 0.05s;
     -webkit-tap-highlight-color: transparent;
 }
-.main-coin:active { transform: scale(0.95); }
+.main-coin:active { transform: scale(0.92); }
+.floating-number { position: absolute; color: white; font-weight: bold; font-size: 26px; pointer-events: none; transition: 0.5s; z-index: 50; text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
 
-.energy-container { margin: 20px auto; width: 80%; text-align: left; }
-.energy-text { font-size: 14px; color: #aaa; margin-bottom: 5px; font-weight: bold;}
-.energy-bar-bg { width: 100%; height: 12px; background: #333; border-radius: 10px; overflow: hidden; }
-.energy-bar-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #ff4b2b, #ff416c); transition: width 0.1s; }
+/* Energy */
+.energy-container { margin-top: 20px; }
+.energy-text { font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #ccc; }
+.energy-bar-bg { background: #333; height: 14px; border-radius: 20px; overflow: hidden; }
+.energy-bar-fill { height: 100%; background: linear-gradient(90deg, #00c6ff, #0072ff); transition: width 0.1s; }
 
-.wallet-modal {
-    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.8); z-index: 100; align-items: flex-end;
+/* Tasks UI */
+.section-title { font-size: 22px; margin-bottom: 15px; }
+.task-category { font-size: 12px; color: #888; text-transform: uppercase; margin: 20px 0 10px 0; font-weight: bold; }
+.task-card {
+    background: #1c1c1e; border-radius: 15px; padding: 15px;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px; border: 1px solid #333;
 }
-.wallet-content {
-    background: #1e1e1e; width: 100%; padding: 25px 20px;
-    border-top-left-radius: 25px; border-top-right-radius: 25px; box-sizing: border-box;
-    text-align: left; transform: translateY(100%); transition: transform 0.3s ease;
-}
-.wallet-content.open { transform: translateY(0); }
-.modal-balance { color: #aaa; font-size: 14px; }
-.modal-balance span { color: #00e5ff; font-weight: bold; font-size: 18px; }
+.task-info h4 { margin: 0 0 5px 0; font-size: 16px; }
+.task-info p { margin: 0; font-size: 13px; color: #aaa; }
+.task-btn { background: #28a745; border: none; padding: 10px 15px; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; }
 
-.action-btn {
-    width: 100%; padding: 15px; margin-top: 10px; border: none; border-radius: 12px;
-    font-size: 16px; font-weight: bold; cursor: pointer; color: white;
-}
-.btn-buy { background: #8a2be2; }
-.btn-swap { background: #0078ff; }
-.btn-withdraw { background: #00c6ff; color: #000; }
+/* Wallet UI */
+.wallet-header { background: linear-gradient(135deg, #1e3c72, #2a5298); padding: 25px; border-radius: 20px; text-align: center; border: 1px solid #444; }
+.buy-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.buy-card { background: #1c1c1e; padding: 15px 5px; border-radius: 15px; text-align: center; border: 1px solid #333; cursor: pointer; }
+.buy-card:active { background: #333; }
+.buy-card b { font-size: 18px; color: #00e5ff; }
+.buy-card span { font-size: 12px; color: #aaa; }
 
-.menu {
-    display: flex; justify-content: space-around; position: fixed;
-    bottom: 0; width: 100%; background: #1a1a1a; padding: 15px 0;
-}
-.menu-btn { background: transparent; border: none; color: white; font-size: 18px; font-weight: bold; cursor: pointer; }
+.action-btn { width: 100%; padding: 15px; margin-top: 10px; border: none; border-radius: 15px; font-size: 15px; font-weight: bold; cursor: pointer; color: white; }
+.btn-swap { background: #444; }
+.btn-withdraw-uc { background: linear-gradient(90deg, #ff8a00, #e52e71); }
+.btn-withdraw-cash { background: linear-gradient(90deg, #11998e, #38ef7d); color: black; }
 
-.floating-number {
-    position: absolute; color: #fff; font-weight: bold; font-size: 24px;
-    transition: transform 0.5s, opacity 0.5s; pointer-events: none;
+/* Bottom Nav */
+.bottom-nav {
+    position: fixed; bottom: 0; width: 100%; display: flex;
+    background: rgba(20, 20, 20, 0.95); backdrop-filter: blur(10px);
+    border-top: 1px solid #333; padding: 10px 0 20px 0;
 }
+.nav-btn {
+    flex: 1; background: none; border: none; color: #888;
+    font-size: 16px; font-weight: bold; padding: 10px; cursor: pointer;
+    transition: 0.3s;
+}
+.nav-btn.active { color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.5); transform: translateY(-3px); }
