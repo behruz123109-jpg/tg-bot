@@ -2,86 +2,24 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>TapMaster Game</title>
-    <link rel="stylesheet" href="./style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tap to Earn Game</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Telegram Web App kutubxonasi -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
-    <div class="app-container">
-        <!-- Top Stats -->
-        <div class="top-bar">
-            <div class="stat-box">
-                <i class="fa-solid fa-coins text-gold"></i>
-                <span id="display-coins">0</span>
-            </div>
+    <div class="container">
+        <div class="score-board">
+            <h1 id="coins">0 🪙</h1>
+            <p>⚡ Energiya: <span id="energy">500</span>/500</p>
         </div>
-
-        <div class="rank-bar">
-            <div class="rank-badge"><i class="fa-solid fa-shield-halved"></i> Silver ></div>
-        </div>
-
-        <!-- Main Coin Area -->
-        <div class="coin-section" id="coin-section">
-            <div class="main-coin" id="main-coin">
-                <span>T</span>
-            </div>
-        </div>
-
-        <!-- Energy & Boost Button -->
-        <div class="energy-boost-section">
-            <div class="energy-info">
-                <i class="fa-solid fa-bolt text-yellow"></i> 
-                <span id="energy-text">100/100</span>
-            </div>
-            <div class="boost-btn" id="open-boosts-btn">
-                <i class="fa-solid fa-rocket text-orange"></i> Boost
-            </div>
-        </div>
-
-        <!-- Bottom Navigation (Saqlash tugmasi olib tashlandi) -->
-        <div class="bottom-nav">
-            <div class="nav-item active"><i class="fa-solid fa-hand-pointer"></i><p>Earn</p></div>
-            <div class="nav-item"><i class="fa-solid fa-list-check"></i><p>Tasks</p></div>
-            <div class="nav-item"><i class="fa-solid fa-city"></i><p>Town</p></div>
-            <div class="nav-item"><i class="fa-solid fa-rotate"></i><p>Swap</p></div>
-        </div>
-
-        <!-- Boost Modal (Yashirin panel) -->
-        <div class="boost-modal" id="boost-modal">
-            <div class="boost-modal-content">
-                <div class="boost-header">
-                    <h2>Upgrades</h2>
-                    <i class="fa-solid fa-xmark close-btn" id="close-boosts-btn"></i>
-                </div>
-                
-                <!-- Multitap Upgrade -->
-                <div class="upgrade-card" id="buy-multitap">
-                    <div class="upgrade-icon bg-blue"><i class="fa-solid fa-hand-pointer"></i></div>
-                    <div class="upgrade-info">
-                        <h3>Multitap</h3>
-                        <p>+1 Tanga / bosish</p>
-                    </div>
-                    <div class="upgrade-price">
-                        <i class="fa-solid fa-coins text-gold"></i> <span id="multitap-cost">500</span>
-                    </div>
-                </div>
-
-                <!-- Energy Limit Upgrade -->
-                <div class="upgrade-card" id="buy-energy">
-                    <div class="upgrade-icon bg-yellow"><i class="fa-solid fa-battery-full"></i></div>
-                    <div class="upgrade-info">
-                        <h3>Energy Limit</h3>
-                        <p>+100 Energiya</p>
-                    </div>
-                    <div class="upgrade-price">
-                        <i class="fa-solid fa-coins text-gold"></i> <span id="energy-cost">500</span>
-                    </div>
-                </div>
-            </div>
+        
+        <div class="tap-area">
+            <button id="tap-btn">👆 TAP</button>
         </div>
     </div>
-    <script src="./script.js"></script>
+
+    <script src="app.js"></script>
 </body>
 </html>
