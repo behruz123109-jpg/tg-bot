@@ -1,38 +1,101 @@
-<!DOCTYPE html>
-<html lang="uz">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Gold Miner</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-</head>
-<body>
-    <div class="header">
-        <h3 style="margin:0; color:#66fcf1;">⚡ 3D Miner Pro</h3>
-        <div class="balances">
-            <div class="balance-box">
-                <span style="font-size:12px; color:#aaa;">🟡 Tanga</span>
-                <div class="coin-count" id="coinBalance">0</div>
-            </div>
-            <div class="balance-box">
-                <span style="font-size:12px; color:#aaa;">💎 Olmos</span>
-                <div class="uc-count" id="chipBalance">0</div>
-            </div>
-        </div>
-    </div>
+const tg = window.Telegram.WebApp;
+tg.expand();
 
-    <div class="tap-area" id="tapArea">
-        <div class="main-coin" id="coinBtn">👑</div>
-    </div>
+// Boshlang'ich holat (keyinchalik buni API'dan olsangiz bo'ladi)
+let sessionCoins = 0; // Bu marta qancha ishladi
+let currentEnergy = 1331;
+let maxEnergy = 4500;
+let tapValue = 12; // 1 marta bosganda 12 ta beradi
 
-    <div class="energy-container">
-        <div style="font-size:14px; font-weight:bold; margin-bottom:5px;">⚡ Energiya: <span id="energyText">1000</span>/1000</div>
-        <div class="energy-bar-bg">
-            <div class="energy-bar-fill" id="energyFill"></div>
-        </div>
-    </div>
+const displayCoins = document.getElementById('display-coins');
+const energyText = document.getElementById('energy-text');
+const coinSection = document.getElementById('coin-section');
+const mainCoin = document.getElementById('main-coin');
+const saveExitBtn = document.getElementById('save-exit-btn');
 
-    <script src="script.js"></script>
-</body>
-</html>
+// Ekranda vizual sonlarni yangilash
+function updateUI() {
+    displayCoins.innerText = sessionCoins.toLocaleString() + " (+)";
+    energyText.innerText = `${currentEnergy}/${maxEnergy}`;
+}
+
+// Bitta barmoq tekkanda ishlaydigan funksiya
+function handleTap(e) {
+    if (currentEnergy >= tapValue) {
+        currentEnergy -= tapValue;
+        sessionCoins += tapValue;
+        updateUI();
+
+        if (tg.HapticFeedback) {
+            tg.HapticFeedback.impactOccurred('medium');
+        }
+
+        // Bosilgan joyni aniqlab animatsiya chiqarish
+        const rect = coinSection.getBoundingClientRect();
+        let clientX, clientY;
+        
+        // Multi-touch yoki sichqonchani tekshirish
+        if (e.type.includes('touch')) {
+            clientX = e.touches[e.touches.length - 1].clientX;
+            clientY = e.touches[e.touches.length - 1].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        // Ekranda "+12" raqamini hosil qilish
+        const floatNum = document.createElement('div');
+        floatNum.classList.add('float-text');
+        floatNum.innerText = `+${tapValue}`;
+        floatNum.style.left = `${x}px`;
+        floatNum.style.top = `${y}px`;
+        
+        // Agar sal yonroqqa sakrashini xohlasangiz
+        floatNum.style.marginLeft = `${(Math.random() - 0.5) * 40}px`;
+
+        coinSection.appendChild(floatNum);
+
+        // 1 soniyadan keyin DOM'dan o'chirish
+        setTimeout(() => {
+            floatNum.remove();
+        }, 1000);
+    }
+}
+
+// Kompyuterda o'ynash uchun 'click', telefonda 'touchstart' (multi-touch uchun)
+mainCoin.addEventListener('touchstart', (e) => {
+    e.preventDefault(); // Ekranni qimirlab ketishini oldini oladi
+    for(let i=0; i < e.changedTouches.length; i++) {
+        handleTap(e);
+    }
+});
+
+mainCoin.addEventListener('mousedown', handleTap);
+
+// O'yindan chiqish va yig'ilgan pullarni botga jo'natish
+saveExitBtn.addEventListener('click', () => {
+    if(sessionCoins > 0) {
+        const data = {
+            coins: sessionCoins,
+            energy: currentEnergy
+        };
+        // Ma'lumotlarni Telegram botga qaytaradi
+        tg.sendData(JSON.stringify(data)); 
+    } else {
+        tg.close();
+    }
+});
+
+// Energiyani sekin tiklash (har soniyada 3 tadan)
+setInterval(() => {
+    if (currentEnergy < maxEnergy) {
+        currentEnergy += 3;
+        if(currentEnergy > maxEnergy) currentEnergy = maxEnergy;
+        updateUI();
+    }
+}, 1000);
+
+updateUI();
